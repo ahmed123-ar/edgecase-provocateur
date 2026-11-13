@@ -1,0 +1,10 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "edgecase_provocateur"
+version = "0.1.0"
+description = "An educational Python tool for generating adversarial edge cases and diagnosing function failures."
+requires-python = ">=3.13"
+dependencies = []
