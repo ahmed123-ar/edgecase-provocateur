@@ -130,6 +130,7 @@ def generate_cases(
     kwargs: Optional[Dict[str, Any]] = None,
     max_cases: int = DEFAULT_MAX_CASES,
     max_str_len: int = DEFAULT_MAX_STR_LEN,
+    extras: Optional[Dict[Any, List[Any]]] = None,
 ) -> List[Probe]:
     """Build probes by changing one positional or keyword argument at a time."""
     if not isinstance(max_cases, int) or isinstance(max_cases, bool) or max_cases < 0:
@@ -137,14 +138,15 @@ def generate_cases(
     if not isinstance(max_str_len, int) or isinstance(max_str_len, bool) or max_str_len < 1:
         raise ValueError("max_str_len must be a positive integer")
     kwargs = dict(kwargs or {})
+    extras = extras or {}
     probes: List[Probe] = []
     for index, value in enumerate(args):
-        for cand in variants_for(value, max_str_len):
+        for cand in _unique(variants_for(value, max_str_len) + extras.get(index, []), value):
             mutated = list(args)
             mutated[index] = cand
             probes.append(Probe(tuple(mutated), dict(kwargs), index))
     for name, value in kwargs.items():
-        for cand in variants_for(value, max_str_len):
+        for cand in _unique(variants_for(value, max_str_len) + extras.get(name, []), value):
             probes.append(Probe(tuple(args), {**kwargs, name: cand}, name))
     return probes[:max_cases]
 

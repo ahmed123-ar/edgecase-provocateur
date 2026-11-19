@@ -31,6 +31,7 @@ class CaseResult:
     line_text: Optional[str] = None
     kwargs: Dict[str, Any] = field(default_factory=dict)
     changed: Optional[str] = None  # human-readable "numbers = []"
+    warning: Optional[str] = None  # passed without crashing, but looks suspicious
 
     def describe_input(self) -> str:
         """Return the call arguments as ``1, [], key=None`` text."""
@@ -45,6 +46,8 @@ class AnalysisReport:
 
     function_name: str
     results: List[CaseResult]
+    notes: List[str] = field(default_factory=list)  # general observations, e.g. "modifies its input"
+    example: Optional[str] = None  # set when the example call was inferred from type hints
 
     @property
     def failures(self) -> List[CaseResult]:
@@ -55,5 +58,16 @@ class AnalysisReport:
         return [r for r in self.results if r.passed]
 
     @property
+    def warnings(self) -> List[CaseResult]:
+        """Probes that did not crash but returned something suspicious."""
+        return [r for r in self.results if r.passed and r.warning]
+
+    @property
     def total(self) -> int:
         return len(self.results)
+
+    def _repr_html_(self) -> str:
+        """Jupyter/IPython shows this table when the report is the last value of a cell."""
+        from .report import format_report_html
+
+        return format_report_html(self)
