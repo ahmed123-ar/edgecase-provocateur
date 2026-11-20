@@ -23,7 +23,7 @@ tests use. Beginners often don't know *which* cases to try, and a raw traceback 
 |---|---|---|
 | `pytest` | runs tests you write | you must already know the edge cases |
 | Hypothesis | powerful property-based fuzzing | steep learning curve; terse failure output |
-| Edgecase-Provocateur | auto-generates beginner-friendly edge cases **and** coaches you through each failure | heuristic, exceptions only (see [limitations](#limitations)) |
+| Edgecase-Provocateur | auto-generates beginner-friendly edge cases **and** coaches you through each failure | heuristic, mostly exceptions plus a few warnings (see [limitations](#limitations)) |
 
 The combination is the point: type-aware boundary generation + exception capture +
 a readable report + reflection prompts instead of ready-made fixes.
@@ -88,12 +88,42 @@ for failure in report.failures:
 
 Keyword arguments work too: `analyze(f, 4, b=2)`.
 
+### No example? Use type hints
+
+```python
+from typing import List, Optional
+
+def average(xs: List[int], scale: Optional[float] = None) -> float:
+    return sum(xs) / len(xs) * scale
+
+print_report(analyze(average))     # example inferred: average(xs=[1, 2, 3], scale=1.5)
+```
+
+`Optional[...]` parameters also get a `None` probe. Unsupported or missing hints raise a
+`HintError` that says what to add (or to pass an example call instead).
+
+### Notebook view
+
+In Jupyter, just end a cell with the report: `analyze(f, ...)` renders a colour-coded HTML table.
+`format_report_html(report)` returns the same HTML as a string.
+
+### Timeouts
+
+Each probe is limited to 2 seconds (an infinite loop is reported as a `TimeoutError` instead of hanging).
+Change it with `analyze_with(f, args=(...), timeout=5)` or `@provoke(timeout=5)`; `None` or `0` disables it.
+
+### Warnings for silent problems
+
+Cases that do not crash but look suspicious are listed separately: returning `None` (or NaN/inf) where the
+example call did not, and functions that modify their own arguments.
+
 ### Decorator options
 
 ```python
 @provoke(once=False)        # re-analyze on every call (default: first call only)
 @provoke(show=False)        # stay quiet; read f.last_report yourself
 @provoke(max_cases=50, max_str_len=64)
+@provoke(timeout=5)         # seconds per probe (default 2)
 ```
 
 `max_cases` must be a non-negative integer; `max_str_len` must be a positive integer.
@@ -103,10 +133,13 @@ Keyword arguments work too: `analyze(f, 4, b=2)`.
 | Name | Description |
 |---|---|
 | `provoke` | decorator; probes on call, then runs the real call unchanged |
-| `analyze(func, *args, **kwargs)` | returns an `AnalysisReport` |
-| `AnalysisReport` | `.function_name`, `.results`, `.failures`, `.passes`, `.total` |
-| `CaseResult` | `.test_input`, `.kwargs`, `.passed`, `.error_type`, `.message`, `.line_no`, `.line_text`, `.changed` |
-| `format_report(report, limit=None)` / `print_report(report)` | render a report |
+| `analyze(func, *args, **kwargs)` | returns an `AnalysisReport`; with no arguments, the example is inferred from type hints |
+| `analyze_with(func, args, kwargs, timeout=, max_cases=, max_str_len=)` | same, with options |
+| `AnalysisReport` | `.function_name`, `.results`, `.failures`, `.passes`, `.warnings`, `.notes`, `.example`, `.total` |
+| `CaseResult` | `.test_input`, `.kwargs`, `.passed`, `.error_type`, `.message`, `.line_no`, `.line_text`, `.changed`, `.warning` |
+| `format_report(report, limit=None)` / `print_report(report)` | render a report as text |
+| `format_report_html(report, limit=None)` | render a report as HTML (also used automatically in Jupyter) |
+| `HintError` | raised when an example cannot be inferred from type hints |
 
 ## What gets generated
 
@@ -128,10 +161,10 @@ Generation is deterministic and bounded (`max_cases`, default 200).
 ## Limitations
 
 - **Heuristic, finite.** A clean report is **not** proof of correctness.
-- **Exceptions only.** It cannot tell that a function returns a *wrong answer* without a specification.
+- **Mostly exceptions.** Besides crashes it only warns about `None`/NaN/inf results and mutated arguments; it cannot tell that a function returns a *wrong answer* without a specification.
 - **Some probes may be invalid** for your function's contract (e.g. it legitimately only accepts non-empty lists). Treat reports as prompts for reflection.
 - **Your function runs many times.** Avoid probing functions that write files, hit the network, or change global state. Output printed by the probed function is suppressed during probing.
-- **Not a sandbox.** Catching exceptions is not security isolation; there is no timeout, so an input that makes a function loop forever will hang the run. Never probe untrusted code.
+- **Not a sandbox.** Catching exceptions is not security isolation; the per-probe timeout is best effort (it cannot interrupt long C-level calls, and on Windows or outside the main thread a stuck probe keeps running in the background). Never probe untrusted code.
 - Probes receive deep copies of your arguments, so your own data is not mutated (best effort for uncopyable objects).
 
 ## Development
