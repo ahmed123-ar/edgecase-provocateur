@@ -6,8 +6,8 @@ src/edgecase_provocateur/
 ├── engines.py  variants_for(), generate_cases(): bounded edge-case generation
 ├── core.py     analyze(), @provoke: run probes, capture exceptions
 ├── coach.py    explain(): exception type -> why + Socratic question
-├── report.py   format_report(), print_report()
-└── __init__.py public API
+├── hints.py    infer_example(): example call from type hints
+├── report.py   format_report(), format_report_html(), print_report()
 ```
 
 ## Data flow
