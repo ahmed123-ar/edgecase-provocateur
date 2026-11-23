@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"name": "examples",
+			"path": "../../../Downloads/edgecase-provocateur_Hamza/examples"
+		},
+		{
+			"name": "edgecase-provocateur",
+			"path": ".."
+		}
+	],
+	"settings": {}
+}
